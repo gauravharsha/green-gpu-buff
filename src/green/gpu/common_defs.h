@@ -32,6 +32,10 @@
 #pragma omp declare reduction(+ : std::complex<double> : omp_out += omp_in)
 
 namespace green::gpu {
+
+  // GREEN-MBTOOLS package version
+  static const std::string INPUT_VERSION = "0.2.4";
+
   // Matrix types
   template <typename prec>
   using MatrixX   = Eigen::Matrix<prec, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;

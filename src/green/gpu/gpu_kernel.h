@@ -29,7 +29,8 @@
 
 #include "common_defs.h"
 #include "cuda_check.h"
-#include "df_integral_t.h"
+// #include "df_integral_t.h"
+#include "df_integral_t_new.h"
 #include "df_integral_types_e.h"
 
 namespace green::gpu {
@@ -47,6 +48,7 @@ namespace green::gpu {
         _coul_int_reading_type = chunks;
       } else {
         _coul_int_reading_type = as_a_whole;
+        std::runtime_error("Support for cuda_low_cpu_memory = True is temporarily disabled");
       }
     }
     virtual ~gpu_kernel() { clean_shared_Coulomb(); }

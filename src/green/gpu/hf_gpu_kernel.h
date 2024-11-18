@@ -28,7 +28,8 @@
 
 #include "cuda_check.h"
 #include "cuda_common.h"
-#include "df_integral_t.h"
+// #include "df_integral_t.h"
+#include "df_integral_t_new.h"
 #include "green/gpu/gpu_kernel.h"
 #include "green/utils/mpi_shared.h"
 #include "green/utils/mpi_utils.h"
