@@ -246,7 +246,6 @@ namespace green::gpu {
     qpt.verbose() = verbose;
 
     for (size_t q_reduced_id = _devices_rank; q_reduced_id < _ink; q_reduced_id += _devices_size) {
-      if (!q_reduced_id) cudaProfilerStart();
       if (verbose > 2) std::cout << "q = " << q_reduced_id << std::endl;
       size_t q = reduced_to_full[q_reduced_id];
       qpt.reset_Pqk0();
@@ -295,6 +294,7 @@ namespace green::gpu {
       qpt.transform_wt();
 
       if (!_devices_rank) POP_RANGE;
+      if (!q_reduced_id) cudaProfilerStart();
       if (!_devices_rank) PUSH_RANGE("Build Sigma", 1);
 
       // Write to Sigma(k), k belongs to _ink
