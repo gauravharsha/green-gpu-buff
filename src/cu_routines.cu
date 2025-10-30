@@ -230,7 +230,7 @@ namespace green::gpu {
       // TODO: Do we need to add the same handle to qkpt as qpt?
       if (cublasCreate(&_qkpt_handles[i]) != CUBLAS_STATUS_SUCCESS)
         throw std::runtime_error("Rank " + std::to_string(_myid) + ": error initializing cublas");
-      qkpts[i] = new gw_qkpt<prec>(_nao, _NQ, _ns, _nts, _nt_batch, &_qkpt_handles[i], g_kstij_device, g_ksmtij_device, sigma_kstij_device,
+      qkpts[i] = new gw_qkpt<prec>(_nao, _NQ, _ns, _nts, _nt_batch, _nk_batch, &_qkpt_handles[i], g_kstij_device, g_ksmtij_device, sigma_kstij_device,
                                    sigma_k_locks);
     }
   }

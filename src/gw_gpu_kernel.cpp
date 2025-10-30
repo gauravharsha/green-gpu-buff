@@ -217,38 +217,38 @@ namespace green::gpu {
         statistics.end();
       };
 
-      gw_reader2_callback<prec> r2_nkbatch = [&](int k_start, int k_end, int q_reduced_id,
-                                        tensor<std::complex<prec>,3>& V_kQim, std::complex<double> *Vk1k2_Qij,
-                                        tensor<std::complex<prec>,4>&G_k1stij,
-                                        bool need_minus_k1) {
-        statistics.start("read");
-        tensor<std::complex<prec>, 3> V_Qim_for_each_k;
-        size_t q = _bz_utils.symmetry().reduced_to_full()[q_reduced_id];
-        for (size_t k = k_start; k < k_end; k++) {
-          // Create k-vector
-          std::array<size_t, 4> k_vector = mom_cons({{k, 0, q}})
-          size_t                k1            = k_vector[3];
-          size_t                k_reduced_id  = full_to_reduced[k];   // irre_pos(index[k]);
-          size_t                k1_reduced_id = full_to_reduced[k1];  // irre_pos(index[k1]);
-          bool                  need_minus_k  = reduced_to_full[k_reduced_id] != k;
-          bool                  need_minus_k1 = reduced_to_full[k1_reduced_id] != k1;
-          // Read integrals for k-pair (k, k1)
-          if (_coul_int_reading_type == chunks) {
-            read_next(k_vector);
-            _coul_int->symmetrize(V_Qim_for_each_k, k, k1);
-          } else {
-            // TODO: not supported with k-batch yet
-            _coul_int->symmetrize(Vk1k2_Qij, V_Qim_for_each_k, k, k1);
-          }
-          // Push the integrals into big tensor
-          V_kQim(k - k_start) = V_Qim_for_each_k; // TODO: check tensor assignment works
-          // Read Green's function for k1
-          if (_low_device_memory) {
-            copy_Gk(g.object(), G_k1stij.data() + (k - k_start) * _nts * _ns * _naosq, k1_reduced_id, false);
-          }
-        }
-        statistics.end();
-      };
+      // gw_reader2_callback<prec> r2_nkbatch = [&](int k_start, int k_end, int q_reduced_id,
+      //                                   tensor<std::complex<prec>,3>& V_kQim, std::complex<double> *Vk1k2_Qij,
+      //                                   tensor<std::complex<prec>,4>&G_k1stij,
+      //                                   bool need_minus_k1) {
+      //   statistics.start("read");
+      //   tensor<std::complex<prec>, 3> V_Qim_for_each_k;
+      //   size_t q = _bz_utils.symmetry().reduced_to_full()[q_reduced_id];
+      //   for (size_t k = k_start; k < k_end; k++) {
+      //     // Create k-vector
+      //     std::array<size_t, 4> k_vector = mom_cons({{k, 0, q}})
+      //     size_t                k1            = k_vector[3];
+      //     size_t                k_reduced_id  = full_to_reduced[k];   // irre_pos(index[k]);
+      //     size_t                k1_reduced_id = full_to_reduced[k1];  // irre_pos(index[k1]);
+      //     bool                  need_minus_k  = reduced_to_full[k_reduced_id] != k;
+      //     bool                  need_minus_k1 = reduced_to_full[k1_reduced_id] != k1;
+      //     // Read integrals for k-pair (k, k1)
+      //     if (_coul_int_reading_type == chunks) {
+      //       read_next(k_vector);
+      //       _coul_int->symmetrize(V_Qim_for_each_k, k, k1);
+      //     } else {
+      //       // TODO: not supported with k-batch yet
+      //       _coul_int->symmetrize(Vk1k2_Qij, V_Qim_for_each_k, k, k1);
+      //     }
+      //     // Push the integrals into big tensor
+      //     V_kQim(k - k_start) = V_Qim_for_each_k; // TODO: check tensor assignment works
+      //     // Read Green's function for k1
+      //     if (_low_device_memory) {
+      //       copy_Gk(g.object(), G_k1stij.data() + (k - k_start) * _nts * _ns * _naosq, k1_reduced_id, false);
+      //     }
+      //   }
+      //   statistics.end();
+      // };
 
       // gw_reader1_callback<prec> r1 = [&](int k, int k1, int k_reduced_id, int k1_reduced_id, const std::array<size_t, 4>& k_vector,
       //                                    tensor<std::complex<prec>,3>& V_Qpm, std::complex<double> *Vk1k2_Qij,

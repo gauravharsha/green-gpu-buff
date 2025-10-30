@@ -38,8 +38,8 @@ namespace green::gpu {
 
   template <typename prec>
   using gw_reader1_callback =
-      std::function<void(int, int, int, int, const std::array<size_t, 4>&, tensor<std::complex<prec>, 3>&, std::complex<double>*,
-                         tensor<std::complex<prec>, 4>&, tensor<std::complex<prec>, 4>&, bool, bool)>;
+      std::function<void(int, int, int, int, const std::array<size_t, 4>&, tensor<std::complex<prec>, 4>&, std::complex<double>*,
+                         tensor<std::complex<prec>, 5>&, tensor<std::complex<prec>, 5>&, bool, bool)>;
   template <typename prec>
   using gw_reader2_callback = std::function<void(int, int, int, const std::array<size_t, 4>&, tensor<std::complex<prec>, 3>&,
                                                  std::complex<double>*, tensor<std::complex<prec>, 4>&, bool)>;
