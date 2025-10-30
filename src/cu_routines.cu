@@ -254,7 +254,7 @@ namespace green::gpu {
       for (size_t k = 0; k < _nk; k += nk_batch_) {
         size_t k_start = k;
         size_t k_end = std::min(k + nk_batch_, (size_t)_nk);
-        size_t nk_mult = std::min(nk_batch_, _nk - k);
+        size_t nk_mult = std::min(static_cast<size_t>(nk_batch_), _nk - k);
         // TODO: Needs to refactor this -- most of this k-vector info will become useless
         std::array<size_t, 4> k_vector      = momentum_conservation({
             {k, 0, q}
@@ -279,7 +279,7 @@ namespace green::gpu {
             qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id, need_minus_k1, nk_mult);
           } else {
             // In 2cGW, G(-k) = G*(k) has already been addressed in r1()
-            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, false, k1_reduced_id, false,, nk_mult);
+            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, false, k1_reduced_id, false, nk_mult);
           }
         } else {
           qkpt->set_up_qkpt_first(nullptr, nullptr, V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id, need_minus_k1, nk_mult);

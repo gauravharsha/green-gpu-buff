@@ -540,7 +540,7 @@ namespace green::gpu {
     cudaMalloc((void**)&d_X2_ptrs_, nk_mult * nt_batch_ * sizeof(cuda_complex*));
     // set the stream for cublas
     cublasSetStream(*handle_, stream_);
-    for (int s = 0; s < ns_; ++S) {
+    for (int s = 0; s < ns_; ++s) {
       for (int t = 0; t < nt_ / 2; t += nt_batch_) {
         int nt_mult = std::min(nt_batch_, nt_ / 2 - t);
         // Prepare pointer arrays for batched gemm
