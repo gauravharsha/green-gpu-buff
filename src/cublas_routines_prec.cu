@@ -226,3 +226,29 @@ cublasStatus_t  GETRS_BATCHED(cublasHandle_t handle,
         int batchSize) {
   return cublasZgetrsBatched(handle, trans, n, nrhs, Aarray, lda, devIpiv, Barray, ldb, info, batchSize);
 }
+
+cublasStatus_t GEMM_BATCHED(cublasHandle_t handle,
+        cublasOperation_t transa,
+        cublasOperation_t transb,
+        int m, int n, int k,
+        const cuDoubleComplex *alpha,
+        const cuDoubleComplex **A, int lda,
+        const cuDoubleComplex **B, int ldb,
+        const cuDoubleComplex *beta,
+        cuDoubleComplex       **C, int ldc,
+        int batchCount) {
+  return cublasZgemmBatched(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, batchCount);
+}
+
+cublasStatus_t GEMM_BATCHED(cublasHandle_t handle,
+        cublasOperation_t transa,
+        cublasOperation_t transb,
+        int m, int n, int k,
+        const cuComplex *alpha,
+        const cuComplex **A, int lda,
+        const cuComplex **B, int ldb,
+        const cuComplex *beta,
+        cuComplex       **C, int ldc,
+        int batchCount) {
+  return cublasZgemmBatched(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, batchCount);
+}

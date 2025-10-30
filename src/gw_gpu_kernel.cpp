@@ -198,8 +198,6 @@ namespace green::gpu {
           size_t                k1            = k_vector[3];
           size_t                k_reduced_id  = full_to_reduced[k];   // irre_pos(index[k]);
           size_t                k1_reduced_id = full_to_reduced[k1];  // irre_pos(index[k1]);
-          bool                  need_minus_k  = reduced_to_full[k_reduced_id] != k;
-          bool                  need_minus_k1 = reduced_to_full[k1_reduced_id] != k1;
           // Read integrals for k-pair (k, k1)
           if (_coul_int_reading_type == chunks) {
             read_next(k_vector);

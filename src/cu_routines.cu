@@ -254,7 +254,8 @@ namespace green::gpu {
       for (size_t k = 0; k < _nk; k += nk_batch_) {
         size_t k_start = k;
         size_t k_end = std::min(k + nk_batch_, (size_t)_nk);
-        // Lot of this info will become useless
+        size_t nk_mult = std::min(nk_batch_, _nk - k);
+        // TODO: Needs to refactor this -- most of this k-vector info will become useless
         std::array<size_t, 4> k_vector      = momentum_conservation({
             {k, 0, q}
         });
@@ -265,7 +266,7 @@ namespace green::gpu {
         bool                  need_minus_k1 = reduced_to_full[k1_reduced_id] != k1;
 
         if (!_devices_rank) PUSH_RANGE("r1: read ints and G(k2)", 2);
-        // TODO: add support for x2c
+        // TODO: (LATER) add support for x2c
         r1(k_start, k_end, q_reduced_id, V_Qpm, Vk1k2_Qij, Gk_smtij, Gk1_stij, need_minus_k, need_minus_k1);
         // r1(k, k1, k_reduced_id, k1_reduced_id, k_vector, V_Qpm, Vk1k2_Qij, Gk_smtij, Gk1_stij, need_minus_k, need_minus_k1);
         if (!_devices_rank) POP_RANGE;
@@ -275,22 +276,22 @@ namespace green::gpu {
         if (!_devices_rank) PUSH_RANGE("setup: copy data to device", 3);
         if (_low_device_memory) {
           if (!_X2C) {
-            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id,
-                                    need_minus_k1);
+            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id, need_minus_k1, nk_mult);
           } else {
             // In 2cGW, G(-k) = G*(k) has already been addressed in r1()
-            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, false, k1_reduced_id, false);
+            qkpt->set_up_qkpt_first(Gk1_stij.data(), Gk_smtij.data(), V_Qpm.data(), k_reduced_id, false, k1_reduced_id, false,, nk_mult);
           }
         } else {
-          qkpt->set_up_qkpt_first(nullptr, nullptr, V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id, need_minus_k1);
+          qkpt->set_up_qkpt_first(nullptr, nullptr, V_Qpm.data(), k_reduced_id, need_minus_k, k1_reduced_id, need_minus_k1, nk_mult);
         }
         if (!_devices_rank) POP_RANGE;
         if (!_devices_rank) PUSH_RANGE("P0 contraction", 4);
-        qkpt->compute_first_tau_contraction(qpt.Pqk0_tQP(qkpt->all_done_event()), qpt.Pqk0_tQP_lock());
+        qkpt->compute_first_tau_contraction(qpt.Pqk0_tQP(qkpt->all_done_event()), qpt.Pqk0_tQP_lock(), nk_mult);
         if (!_devices_rank) POP_RANGE;
       }
 
       if (!_devices_rank) POP_RANGE;
+      break;
       if (!_devices_rank) PUSH_RANGE("Build P", 1);
 
       qpt.wait_for_kpts();
@@ -355,7 +356,6 @@ namespace green::gpu {
       }
       if (!_devices_rank) POP_RANGE;
       if (!q_reduced_id) cudaProfilerStop();
-      break;
     }
     if (!_devices_rank) PUSH_RANGE("Wait for remaining qkpt workers", 1);
     wait_and_clean_qkpts(qkpts, _low_device_memory, Sigmak_stij, Sigma_tskij_host, _X2C);

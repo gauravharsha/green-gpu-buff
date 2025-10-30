@@ -232,7 +232,7 @@ namespace green::gpu {
      * \param need_minus_k1 - we actually need -k1 (apply symmetry relations)
      */
     void set_up_qkpt_first(cxx_complex* Gk1_stij_host, cxx_complex* Gk_smtij_host, cxx_complex* V_Qpm_host, int k,
-                           bool need_minus_k, int k1, bool need_minus_k1);
+                           bool need_minus_k, int k1, bool need_minus_k1, int nk_mult);
 
     /**
      * \brief Setup device memory to compute G-W contraction and obtain self-energy
@@ -251,7 +251,7 @@ namespace green::gpu {
      * \param Pqk0_tQP - output buffer for bare polarization bubble
      * \param Pqk0_tQP_lock synchronization lock for bare polarization bubble
      */
-    void compute_first_tau_contraction(cuda_complex* Pqk0_tQP, int* Pqk0_tQP_lock);
+    void compute_first_tau_contraction(cuda_complex* Pqk0_tQP, int* Pqk0_tQP_lock, int k);
 
     /**
      * \brief Write locally computed polarization for a given imaginary time point into a full array
@@ -260,7 +260,7 @@ namespace green::gpu {
      * \param Pqk0_tQP bare polarization bubble
      * \param Pqk0_tQP_lock synchronization lock for polarization
      */
-    void write_P0(int t, cuda_complex* Pqk0_tQP, int* Pqk0_tQP_lock);
+    void write_P0(int t, int nk_mult, cuda_complex* Pqk0_tQP, int* Pqk0_tQP_lock);
 
     // /**
     //  * \brief Using dressed GW polarization compute self-energy at a given momentum point
