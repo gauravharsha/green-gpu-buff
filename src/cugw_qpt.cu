@@ -340,11 +340,11 @@ namespace green::gpu {
   }
 
   template <typename prec>
-  gw_qkpt<prec>::gw_qkpt(int nao, int naux, int ns, int nt, int nt_batch, cublasHandle_t* handle, cuda_complex* g_ktij,
+  gw_qkpt<prec>::gw_qkpt(int nao, int naux, int ns, int nt, int nt_batch, int nk_batch, cublasHandle_t* handle, cuda_complex* g_ktij,
                          cuda_complex* g_kmtij, cuda_complex* sigma_ktij, int* sigma_k_locks) :
       g_ktij_(g_ktij), g_kmtij_(g_kmtij), sigma_ktij_(sigma_ktij), sigma_k_locks_(sigma_k_locks), nao_(nao), nao2_(nao * nao),
       nao3_(nao2_ * nao), naux_(naux), naux2_(naux * naux), nauxnao_(naux * nao), nauxnao2_(naux * nao * nao), ns_(ns), nt_(nt),
-      nt_batch_(nt_batch), ntnaux_(nt * naux), ntnaux2_(nt * naux * naux), ntnao_(nt * nao), ntnao2_(nt * nao2_),
+      nt_batch_(nt_batch), nk_batch_(nk_batch), ntnaux_(nt * naux), ntnaux2_(nt * naux * naux), ntnao_(nt * nao), ntnao2_(nt * nao2_),
       handle_(handle), cleanup_req_(false) {
     _low_memory_requirement = (g_ktij == nullptr) ? true : false;
     if (cudaStreamCreate(&stream_) != cudaSuccess) throw std::runtime_error("main stream creation failed");
@@ -418,6 +418,7 @@ namespace green::gpu {
   template <typename prec>
   void gw_qkpt<prec>::set_up_qkpt_first(cxx_complex* Gk1_stij_host, cxx_complex* Gk_smtij_host, cxx_complex* V_Qpm_host, int k,
                                         bool need_minus_k, int k1, bool need_minus_k1) {
+    // TODO: Incorporate k_batch here now!
     cudaStreamSynchronize(stream_);  // this should not trigger. But just in case: wait until we're done with all previous calcs
     k_  = k;
     k1_ = k1;
@@ -425,12 +426,14 @@ namespace green::gpu {
     cudaMemcpyAsync(V_Qpm_, V_Qpm_buffer_, nauxnao2_ * sizeof(cuda_complex), cudaMemcpyHostToDevice, stream_);
 
     // explicit conjugate transpose of V
+    // NOTE: incoming data from Host is row major, but CUBLAS assumes column major, so we swap the op dimensions
     int      two   = 2;
     scalar_t alpha = -1;
     cublasSetStream(*handle_, stream_);
     cuda_complex one  = cu_type_map<cxx_complex>::cast(1., 0.);
     cuda_complex zero = cu_type_map<cxx_complex>::cast(0., 0.);
-    // C = alpha*op(A) + beta*op(C)
+    // C = alpha*op(A) + beta*op(C) ---- with this operation, we get V_pmQ_ = (V_Qpm_)^T = V_pmQ_(nk_batch_, NQ, nao2)
+    // TODO: The k-dimensioon can / should be cleverly handled here.
     if (GEAM(*handle_, CUBLAS_OP_T, CUBLAS_OP_N, naux_, nao2_, &one, V_Qpm_, nao2_, &zero, V_pmQ_, naux_, V_pmQ_, naux_) !=
         CUBLAS_STATUS_SUCCESS) {
       throw std::runtime_error("GEAM fails on gw_qkpt.set_up_qkpt_first().");
@@ -442,14 +445,14 @@ namespace green::gpu {
 
     if (_low_memory_requirement) {
       // How much extra overhead if we do HostToDevice copy instead?
-      std::memcpy(Gk1_stij_buffer_, Gk1_stij_host, ns_ * ntnao2_ * sizeof(cxx_complex));
-      std::memcpy(Gk_smtij_buffer_, Gk_smtij_host, ns_ * ntnao2_ * sizeof(cxx_complex));
-      cudaMemcpyAsync(g_stij_, Gk1_stij_buffer_, ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyHostToDevice, stream_);
-      cudaMemcpyAsync(g_smtij_, Gk_smtij_buffer_, ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyHostToDevice, stream_);
+      std::memcpy(Gk1_stij_buffer_, Gk1_stij_host, nk_batch_ * ns_ * ntnao2_ * sizeof(cxx_complex));
+      std::memcpy(Gk_smtij_buffer_, Gk_smtij_host, nk_batch_ * ns_ * ntnao2_ * sizeof(cxx_complex));
+      cudaMemcpyAsync(g_stij_, Gk1_stij_buffer_, nk_batch_ * ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyHostToDevice, stream_);
+      cudaMemcpyAsync(g_smtij_, Gk_smtij_buffer_, nk_batch_ * ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyHostToDevice, stream_);
     } else {
       // Prepare proper g_tij and g_mtij. Ugly but leave it for now...
-      cudaMemsetAsync(g_stij_, 0, sizeof(cuda_complex) * ns_ * ntnaux2_, stream_);
-      cudaMemsetAsync(g_smtij_, 0, sizeof(cuda_complex) * ns_ * ntnaux2_, stream_);
+      cudaMemsetAsync(g_stij_, 0, sizeof(cuda_complex) * ns_ * ntnao2_, stream_);
+      cudaMemsetAsync(g_smtij_, 0, sizeof(cuda_complex) * ns_ * ntnao2_, stream_);
       cudaMemcpyAsync(g_stij_, g_ktij_ + k1_ * ns_ * ntnao2_, ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyDeviceToDevice,
                       stream_);
       cudaMemcpyAsync(g_smtij_, g_kmtij_ + k_ * ns_ * ntnao2_, ns_ * ntnao2_ * sizeof(cuda_complex), cudaMemcpyDeviceToDevice,

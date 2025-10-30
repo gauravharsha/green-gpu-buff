@@ -190,12 +190,13 @@ namespace green::gpu {
   }
 
   template <typename prec>
-  cugw_utils<prec>::cugw_utils(int _nts, int _nt_batch, int _nw_b, int _ns, int _nk, int _ink, int _nqkpt, int _NQ, int _nao,
+  cugw_utils<prec>::cugw_utils(int _nts, int _nt_batch, int _nw_b, int _ns, int _nk, int _ink, int _nqkpt, int _nk_batch, int _NQ, int _nao,
                                ztensor_view<5>& G_tskij_host, bool low_device_memory, const MatrixXcd& Ttn_FB,
                                const MatrixXcd& Tnt_BF, LinearSolverType cuda_lin_solver, int _myid, int _intranode_rank,
                                int _devCount_per_node) :
-      _low_device_memory(low_device_memory), qkpts(_nqkpt), V_Qpm(_NQ, _nao, _nao), V_Qim(_NQ, _nao, _nao),
-      Gk1_stij(_ns, _nts, _nao, _nao), Gk_smtij(_ns, _nts, _nao, _nao),
+      _low_device_memory(low_device_memory), nk_batch_(_nk_batch), qkpts(_nqkpt),
+      V_Qpm(_nk_batch, _NQ, _nao, _nao), V_Qim(_nk_batch, _NQ, _nao, _nao),
+      Gk1_stij(_nk_batch, _ns, _nts, _nao, _nao), Gk_smtij(_nk_batch, _ns, _nts, _nao, _nao),
       qpt(_nao, _NQ, _nts, _nw_b, Ttn_FB.data(), Tnt_BF.data(), cuda_lin_solver), _qkpt_handles(_nqkpt) {
     if (cudaSetDevice(_intranode_rank % _devCount_per_node) != cudaSuccess) throw std::runtime_error("Error in cudaSetDevice2");
     if (cublasCreate(&_handle) != CUBLAS_STATUS_SUCCESS)
@@ -250,7 +251,10 @@ namespace green::gpu {
       size_t q = reduced_to_full[q_reduced_id];
       qpt.reset_Pqk0();
       if (!_devices_rank) PUSH_RANGE("Build P0", 1);
-      for (size_t k = 0; k < _nk; ++k) {
+      for (size_t k = 0; k < _nk; k += nk_batch_) {
+        size_t k_start = k;
+        size_t k_end = std::min(k + nk_batch_, (size_t)_nk);
+        // Lot of this info will become useless
         std::array<size_t, 4> k_vector      = momentum_conservation({
             {k, 0, q}
         });
@@ -261,7 +265,9 @@ namespace green::gpu {
         bool                  need_minus_k1 = reduced_to_full[k1_reduced_id] != k1;
 
         if (!_devices_rank) PUSH_RANGE("r1: read ints and G(k2)", 2);
-        r1(k, k1, k_reduced_id, k1_reduced_id, k_vector, V_Qpm, Vk1k2_Qij, Gk_smtij, Gk1_stij, need_minus_k, need_minus_k1);
+        // TODO: add support for x2c
+        r1(k_start, k_end, q_reduced_id, V_Qpm, Vk1k2_Qij, Gk_smtij, Gk1_stij, need_minus_k, need_minus_k1);
+        // r1(k, k1, k_reduced_id, k1_reduced_id, k_vector, V_Qpm, Vk1k2_Qij, Gk_smtij, Gk1_stij, need_minus_k, need_minus_k1);
         if (!_devices_rank) POP_RANGE;
 
         gw_qkpt<prec>* qkpt = obtain_idle_qkpt(qkpts);

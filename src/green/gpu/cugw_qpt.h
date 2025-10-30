@@ -215,7 +215,7 @@ namespace green::gpu {
     using cuda_complex = typename cu_type_map<std::complex<prec>>::cuda_type;
 
   public:
-    gw_qkpt(int nao, int naux, int ns, int nt, int nt_batch, cublasHandle_t* handle, cuda_complex* g_ktij, cuda_complex* g_kmtij,
+    gw_qkpt(int nao, int naux, int ns, int nt, int nt_batch, int nk_batch, cublasHandle_t* handle, cuda_complex* g_ktij, cuda_complex* g_kmtij,
             cuda_complex* sigma_ktij, int* sigma_k_locks);
 
     ~gw_qkpt();
@@ -361,6 +361,15 @@ namespace green::gpu {
              sizeof(cuda_complex);
     }
 
+
+    static std::size_t size_with_nk_batch(size_t nao, size_t naux, size_t nt, size_t nt_batch, size_t nk_batch, size_t ns) {
+      return (2 * nk_batch * naux * nao * nao             // V_Qpm+V_pmQ
+              + naux * naux * nt_batch                    // local copy of P
+              + 2 * nt_batch * naux * nao * nao           // X1 and X2
+              + 3 * nk_batch * ns * nt * nao * nao        // sigmak_stij, g_stij, g_smtij
+              ) * sizeof(cuda_complex);
+    }
+
     cudaEvent_t  all_done_event() const { return all_done_event_; }
     cudaStream_t stream() const { return stream_; }
 
@@ -423,6 +432,7 @@ namespace green::gpu {
     const int ntnao2_;
 
     const int nt_batch_;
+    const int nk_batch_;
 
     // momentum indices
     int k_;

@@ -134,7 +134,7 @@ namespace green::gpu {
     using cuda_complex = typename cu_type_map<std::complex<prec>>::cuda_type;
 
   public:
-    cugw_utils(int _nts, int _nt_batch, int _nw_b, int _ns, int _nk, int _ink, int _nqkpt, int _NQ, int _nao,
+    cugw_utils(int _nts, int _nt_batch, int _nw_b, int _ns, int _nk, int _ink, int _nqkpt, int _nk_batch, int _NQ, int _nao,
                ztensor_view<5>& G_tskij_host, bool _low_device_memory, const MatrixXcd& Ttn_FB, const MatrixXcd& Tnt_BF,
                LinearSolverType cuda_lin_solver, int _myid, int _intranode_rank, int _devCount_per_node);
 
@@ -160,17 +160,18 @@ namespace green::gpu {
     gw_qpt<prec>                   qpt;
     std::vector<gw_qkpt<prec>*>    qkpts;
 
-    tensor<std::complex<prec>, 3>  V_Qpm;
+    tensor<std::complex<prec>, 4>  V_Qpm;
     tensor<std::complex<prec>, 3>  V_Qim;
-    tensor<std::complex<prec>, 4>  Gk1_stij;
-    tensor<std::complex<prec>, 4>  Gk_smtij;
-    tensor<std::complex<prec>, 4>& Sigmak_stij = Gk_smtij;
+    tensor<std::complex<prec>, 5>  Gk1_stij;
+    tensor<std::complex<prec>, 5>  Gk_smtij;
+    tensor<std::complex<prec>, 5>& Sigmak_stij = Gk_smtij;
 
     cuda_complex*                  g_kstij_device;
     cuda_complex*                  g_ksmtij_device;
     cuda_complex*                  sigma_kstij_device;
 
     int*                           sigma_k_locks;
+    const int                      nk_batch_;
   };
 }  // namespace green::gpu
 
