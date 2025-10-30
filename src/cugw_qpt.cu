@@ -436,10 +436,10 @@ namespace green::gpu {
     // C = alpha*op(A) + beta*op(C)
     // Simply looping over k_batch_ for now. Could be optimized later.
     // NOTE: Even though V_Qpm_ has allocation of nk_batch_, only nk_mult elements are filled here.
-    for (int ik = 0; ik < nk_batch_; ++ik) {
+    for (int ik = 0; ik < nk_mult; ++ik) {
       // with this operation, we get V_pmQ_(nk_batch, NQ, nao2) = V^{k, k1}_pm(Q) (k1 is fixed here)
       if (GEAM(*handle_, CUBLAS_OP_T, CUBLAS_OP_N, naux_, nao2_, &one, V_Qpm_ + ik * nauxnao2_, nao2_, &zero,
-               V_pmQ_ + ik * nauxnao2_, naux_) != CUBLAS_STATUS_SUCCESS) {
+               V_pmQ_ + ik * nauxnao2_, naux_, V_pmQ_ + ik * nauxnao2_, naux_) != CUBLAS_STATUS_SUCCESS) {
         // with this operation, we get V_pmQ_(NQ, nk_batch, nao2) = V^{k, k1}_pm(Q) (k1 is fixed here)
         throw std::runtime_error("GEAM fails on gw_qkpt.set_up_qkpt_first().");
       }
@@ -558,13 +558,13 @@ namespace green::gpu {
           }
         }
         // copy these to device -- should be fast so we can keep it blocking
-        cudaMemcpy(d_V_pmQ_ptrs_, V_pmQ_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_V_Qpm_ptrs_, V_Qpm_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_g_stij_ptrs_, g_stij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_g_smtij_ptrs_, g_smtij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_X1_ptrs_, X1_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_X2_ptrs_, X2_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpy(d_Pqk0_tQP_ptrs_, Pqk0_tQP_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
+        cudaMemcpy(d_V_pmQ_ptrs_, V_pmQ_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_V_Qpm_ptrs_, V_Qpm_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_g_stij_ptrs_, g_stij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_g_smtij_ptrs_, g_smtij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_X1_ptrs_, X1_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_X2_ptrs_, X2_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_Pqk0_tQP_ptrs_, Pqk0_tQP_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
         // START BATCHED GEMMS
         // Step 1: X1_t_mQ = G_t_p * V_pmQ; G_tp = G^{k}(-t)_tp
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_N, CUBLAS_OP_N, nao_ * naux_, nao_, nao_, &one,
