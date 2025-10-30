@@ -83,6 +83,28 @@ cublasStatus_t GEMM_STRIDED_BATCHED(cublasHandle_t handle,
         long long int          strideC,
         int batchCount);
 
+// Pointer-array batched GEMM (cublasXgemmBatched)
+cublasStatus_t GEMM_BATCHED(cublasHandle_t handle,
+        cublasOperation_t transa,
+        cublasOperation_t transb,
+        int m, int n, int k,
+        const cuDoubleComplex *alpha,
+        const cuDoubleComplex **A, int lda,
+        const cuDoubleComplex **B, int ldb,
+        const cuDoubleComplex *beta,
+        cuDoubleComplex       **C, int ldc,
+        int batchCount);
+cublasStatus_t GEMM_BATCHED(cublasHandle_t handle,
+        cublasOperation_t transa,
+        cublasOperation_t transb,
+        int m, int n, int k,
+        const cuComplex *alpha,
+        const cuComplex **A, int lda,
+        const cuComplex **B, int ldb,
+        const cuComplex *beta,
+        cuComplex       **C, int ldc,
+        int batchCount);
+
 cublasStatus_t GEAM(cublasHandle_t handle,
         cublasOperation_t transa, cublasOperation_t transb,
         int m, int n,
