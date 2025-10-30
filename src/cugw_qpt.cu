@@ -570,14 +570,14 @@ namespace green::gpu {
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_N, CUBLAS_OP_N, nao_ * naux_, nao_, nao_, &one,
                          (const cuda_complex**)d_V_pmQ_ptrs_, nauxnao_,
                          (const cuda_complex**)d_g_smtij_ptrs_, nao_, &zero,
-                         (const cuda_complex**)d_X1_ptrs_, nauxnao_, nk_mult * nt_mult) != CUBLAS_STATUS_SUCCESS) {
+                         d_X1_ptrs_, nauxnao_, nk_mult * nt_mult) != CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
         // Step 2: X2_Pt_m = (V_Pt_n)* * G_m_n; G_mn = G^{k1}(t)_{mn}
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_N, nao_, nauxnao_, nao_, &one,
                          (const cuda_complex**)d_g_stij_ptrs_, nao_,
                          (const cuda_complex**)d_V_Qpm_ptrs_, nao_, &zero,
-                         (const cuda_complex**)d_X2_ptrs_, nao_, nk_mult * nt_mult) !=
+                         d_X2_ptrs_, nao_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
@@ -585,7 +585,7 @@ namespace green::gpu {
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
                           (const cuda_complex**)d_X2_ptrs_, naux2_, nauxnao2_,
                           (const cuda_complex**)d_X1_ptrs_, naux_, nauxnao2_, &zero,
-                          (const cuda_complex**)d_Pqk0_tQP_ptrs_, naux_, naux2_, nk_mult * nt_mult) !=
+                          d_Pqk0_tQP_ptrs_, naux_, naux2_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
