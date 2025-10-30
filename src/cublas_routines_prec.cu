@@ -250,5 +250,5 @@ cublasStatus_t GEMM_BATCHED(cublasHandle_t handle,
         const cuComplex *beta,
         cuComplex       **C, int ldc,
         int batchCount) {
-  return cublasZgemmBatched(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, batchCount);
+  return cublasCgemmBatched(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, batchCount);
 }

@@ -554,7 +554,7 @@ namespace green::gpu {
             g_smtij_ptrs[k * nt_batch_ + it_batch] = g_smtij_ + kst * nao2_ * sizeof(cuda_complex);
             X1_ptrs[k * nt_batch_ + it_batch]      = X1t_tmQ_ + (k * nt_batch_ + it_batch) * nauxnao2_ * sizeof(cuda_complex);
             X2_ptrs[k * nt_batch_ + it_batch]      = X2t_Ptm_ + (k * nt_batch_ + it_batch) * nauxnao2_ * sizeof(cuda_complex);
-            Pqk0_tQP_ptrs[k * nt_batch_ + it_batch] = Pqk0_tQP_local_ + (it_batch) * naux2_ * sizeof(cuda_complex);
+            Pqk0_tQP_ptrs[k * nt_batch_ + it_batch] = Pqk0_tQP_local_ + (k * nt_batch_ + it_batch) * naux2_ * sizeof(cuda_complex);
           }
         }
         // copy these to device -- should be fast so we can keep it blocking
@@ -582,7 +582,7 @@ namespace green::gpu {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
         // Step 3: Pq0_QP=X2_Ptm Q1_tmQ
-        if (XGEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
+        if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
                           (const cuda_complex**)d_X2_ptrs_, naux2_, nauxnao2_,
                           (const cuda_complex**)d_X1_ptrs_, naux_, nauxnao2_, &zero,
                           (const cuda_complex**)d_Pqk0_tQP_ptrs_, naux_, naux2_, nk_mult * nt_mult) !=
@@ -590,7 +590,7 @@ namespace green::gpu {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
         // END BATCHED GEMMS
-        write_P0(t, Pqk0_tQP, Pqk0_tQP_lock);
+        write_P0(t, nk_mult, Pqk0_tQP, Pqk0_tQP_lock);
       }
     }
     // // Only compute Pq0(t) for t = [0,beta/2] since Pq0(t) = Pq0(beta-t)
