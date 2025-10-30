@@ -583,9 +583,9 @@ namespace green::gpu {
         }
         // Step 3: Pq0_QP=X2_Ptm Q1_tmQ
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
-                          (const cuda_complex**)d_X2_ptrs_, naux2_, nauxnao2_,
-                          (const cuda_complex**)d_X1_ptrs_, naux_, nauxnao2_, &zero,
-                          d_Pqk0_tQP_ptrs_, naux_, naux2_, nk_mult * nt_mult) !=
+                          (const cuda_complex**)d_X2_ptrs_, nao2_,
+                          (const cuda_complex**)d_X1_ptrs_, naux_, &zero,
+                          d_Pqk0_tQP_ptrs_, naux_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
