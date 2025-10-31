@@ -355,7 +355,7 @@ namespace green::gpu {
       //   }
       // }
       // if (!_devices_rank) POP_RANGE;
-      if (!q_reduced_id) cudaProfilerStop();
+      // if (!q_reduced_id) cudaProfilerStop();
     }
     // if (!_devices_rank) PUSH_RANGE("Wait for remaining qkpt workers", 1);
     // wait_and_clean_qkpts(qkpts, _low_device_memory, Sigmak_stij, Sigma_tskij_host, _X2C);
