@@ -161,7 +161,7 @@ namespace green::gpu {
     std::vector<gw_qkpt<prec>*>    qkpts;
 
     tensor<std::complex<prec>, 4>  V_Qpm;
-    tensor<std::complex<prec>, 3>  V_Qim;
+    tensor<std::complex<prec>, 4>  V_Qim;
     tensor<std::complex<prec>, 5>  Gk1_stij;
     tensor<std::complex<prec>, 5>  Gk_smtij;
     tensor<std::complex<prec>, 5>& Sigmak_stij = Gk_smtij;
