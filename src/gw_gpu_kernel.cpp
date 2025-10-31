@@ -174,7 +174,7 @@ namespace green::gpu {
       // check devices' free space and space requirements
       GW_check_devices_free_space();
       statistics.start("Initialization");
-      cugw_utils<prec> cugw(_nts, _nt_batch, _nw_b, _ns, _nk, _ink, _nqkpt, _NQ, _nao, g.object(), _low_device_memory,
+      cugw_utils<prec> cugw(_nts, _nt_batch, _nw_b, _ns, _nk, _ink, _nqkpt, _nk_batch, _NQ, _nao, g.object(), _low_device_memory,
                             _ft.Ttn_FB(), _ft.Tnt_BF(), _cuda_lin_solver, utils::context.global_rank, utils::context.node_rank,
                             _devCount_per_node);
       statistics.end();
@@ -194,10 +194,10 @@ namespace green::gpu {
         size_t q = _bz_utils.symmetry().reduced_to_full()[q_reduced_id];
         for (size_t k = k_start; k < k_end; k++) {
           // Create k-vector
-          std::array<size_t, 4> k_vector = mom_cons({{k, 0, q}})
+          std::array<size_t, 4> k_vector = mom_cons({{k, 0, q}});
           size_t                k1            = k_vector[3];
-          size_t                k_reduced_id  = full_to_reduced[k];   // irre_pos(index[k]);
-          size_t                k1_reduced_id = full_to_reduced[k1];  // irre_pos(index[k1]);
+          size_t                k_reduced_id  = _bz_utils.symmetry().full_to_reduced()[k];   // irre_pos(index[k]);
+          size_t                k1_reduced_id = _bz_utils.symmetry().full_to_reduced()[k1];  // irre_pos(index[k1]);
           // Read integrals for k-pair (k, k1)
           if (_coul_int_reading_type == chunks) {
             read_next(k_vector);
@@ -210,8 +210,11 @@ namespace green::gpu {
           V_kQpm(k - k_start) = V_Qpm_for_each_k; // TODO: check tensor assignment works
           // Read Green's function for k and k1
           if (_low_device_memory) {
-            copy_Gk(g.object(), G_ksmtij.data() + (k - k_start) * _nts * _ns * _naosq , k_reduced_id, true);
-            copy_Gk(g.object(), G_k1stij.data() + (k - k_start) * _nts * _ns * _naosq , k1_reduced_id, false);
+            // Create tensor views for the k-th slice of the 5D tensors
+            auto Gk_smtij_view = G_ksmtij(k - k_start);
+            auto Gk1_stij_view = G_k1stij(k - k_start);
+            copy_Gk(g.object(), Gk_smtij_view, k_reduced_id, true);
+            copy_Gk(g.object(), Gk1_stij_view, k1_reduced_id, false);
           }
         }
         statistics.end();
@@ -306,7 +309,7 @@ namespace green::gpu {
 
     void gw_gpu_kernel::GW_check_devices_free_space() {
       // Set _nk_batch
-      _nk_batch = std::min(_nk, 32);
+      _nk_batch = std::min(_nk, (size_t)32);
       // check devices' free space and space requirements
       auto prec = std::cout.precision();
       auto flags = std::cout.flags();
@@ -315,7 +318,7 @@ namespace green::gpu {
       if (!_devices_rank && _verbose > 1) ss << "Economical gpu memory mode: " << _low_device_memory << std::endl;
       std::size_t qpt_size = (!_sp) ? gw_qpt<double>::size(_nao, _NQ, _nts, _nw_b) : gw_qpt<float>::size(_nao, _NQ, _nts, _nw_b);
       // std::size_t qkpt_size = (!_sp) ? gw_qkpt<double>::size(_nao, _nq, _nts, _nt_batch, _ns) : gw_qkpt<float>::size(_nao, _nq, _nts, _nt_batch, _ns);
-      std::size_t qkpt_size = (!_sp) ? gw_qkpt<double>::size_with_nk_batch(_nao, _nq, _nts, _nt_batch, _ns) : gw_qkpt<float>::size_with_nk_batch(_nao, _nq, _nts, _nt_batch, _ns);
+      std::size_t qkpt_size = (!_sp) ? gw_qkpt<double>::size_with_nk_batch(_nao, _NQ, _nts, _nt_batch, _nk_batch, _ns) : gw_qkpt<float>::size_with_nk_batch(_nao, _NQ, _nts, _nt_batch, _nk_batch, _ns);
       if (!_devices_rank && _verbose > 1) ss << "size of tau batch: " << _nt_batch << std::endl;
       if (!_devices_rank && _verbose > 1) ss << "size of k batch: " << _nk_batch << std::endl;
       if (!_devices_rank && _verbose > 1) ss << "size per qpt: " << qpt_size / (1024 * 1024. * 1024.) << " GB " << std::endl;
@@ -369,29 +372,30 @@ namespace green::gpu {
       // Since the size of the Green's function and self-energy is 4 times largeer,
       // low_device_memory mode is always used.
       int psuedo_ns = 4;
-      cugw_utils<prec> cugw(_nts, _nt_batch, _nw_b, psuedo_ns, _nk, _ink, _nqkpt, _NQ, _nao,
+      cugw_utils<prec> cugw(_nts, _nt_batch, _nw_b, psuedo_ns, _nk, _ink, _nqkpt, _nk_batch, _NQ, _nao,
                             g.object(), true, _ft.Ttn_FB(), _ft.Tnt_BF(), _cuda_lin_solver,
                             utils::context.global_rank, utils::context.node_rank, _devCount_per_node);
       statistics.end();
 
       irre_pos_callback irre_pos = [&](size_t k) -> size_t {return _bz_utils.symmetry().reduced_to_full()[k];};
       mom_cons_callback mom_cons = [&](const std::array<size_t, 3> &k123) -> const std::array<size_t, 4> {return _bz_utils.momentum_conservation(k123);};
-      gw_reader1_callback<prec> r1 = [&](int k, int k1, int k_reduced_id, int k1_reduced_id, const std::array<size_t, 4>& k_vector,
-                                         tensor<std::complex<prec>,3>& V_Qpm, std::complex<double> *Vk1k2_Qij,
-                                         tensor<std::complex<prec>,4>&Gk_4mtij, tensor<std::complex<prec>,4>&Gk1_4tij,
+      gw_reader1_callback<prec> r1 = [&](int k_start, int k_end, int q_reduced_id,
+                                         tensor<std::complex<prec>,4>& V_kQpm, std::complex<double> *Vk1k2_Qij,
+                                         tensor<std::complex<prec>,5>&G_ksmtij, tensor<std::complex<prec>,5>&G_k1stij,
                                          bool need_minus_k, bool need_minus_k1) {
 
-          statistics.start("read");
-          int q = k_vector[2];
-          if (q == 0 or _coul_int_reading_type == chunks) {
-            read_next(k_vector);
-            _coul_int->symmetrize(V_Qpm, k, k1);
-          } else {
-            _coul_int->symmetrize(Vk1k2_Qij, V_Qpm, k, k1);
-          }
-          copy_Gk_2c(g.object(), Gk_4mtij, k_reduced_id, need_minus_k, true);
-          copy_Gk_2c(g.object(), Gk1_4tij, k1_reduced_id, need_minus_k1, false);
-          statistics.end();
+          // TODO: this is brokenf or now - fix it.
+          // statistics.start("read");
+          // int q = k_vector[2];
+          // if (q == 0 or _coul_int_reading_type == chunks) {
+          //   read_next(k_vector);
+          //   _coul_int->symmetrize(V_Qpm, k, k1);
+          // } else {
+          //   _coul_int->symmetrize(Vk1k2_Qij, V_Qpm, k, k1);
+          // }
+          // copy_Gk_2c(g.object(), Gk_4mtij, k_reduced_id, need_minus_k, true);
+          // copy_Gk_2c(g.object(), Gk1_4tij, k1_reduced_id, need_minus_k1, false);
+          // statistics.end();
       };
       gw_reader2_callback<prec> r2 = [&](int k, int k1, int k1_reduced_id, const std::array<size_t, 4>& k_vector,
                                          tensor<std::complex<prec>,3>& V_Qim, std::complex<double> *Vk1k2_Qij,

@@ -114,7 +114,7 @@ namespace green::gpu {
     bool                        _sp;
 
     int                         _nqkpt{};
-    int                         _nk_batch{};
+    size_t                      _nk_batch;
 
     double                      _flop_count{};
     double                      _eff_flops{};
