@@ -363,11 +363,11 @@ namespace green::gpu {
 
 
     static std::size_t size_with_nk_batch(size_t nao, size_t naux, size_t nt, size_t nt_batch, size_t nk_batch, size_t ns) {
-      return (2 * nk_batch * naux * nao * nao             // V_Qpm+V_pmQ
+      return (2 * naux * nao * nao                        // V_Qpm+V_pmQ
               + naux * naux * nt_batch                    // local copy of P
               + 2 * nt_batch * naux * nao * nao           // X1 and X2
-              + 3 * nk_batch * ns * nt * nao * nao        // sigmak_stij, g_stij, g_smtij
-              ) * sizeof(cuda_complex);
+              + 3 * ns * nt * nao * nao                   // sigmak_stij, g_stij, g_smtij
+              ) * nk_batch * sizeof(cuda_complex);
     }
 
     cudaEvent_t  all_done_event() const { return all_done_event_; }
