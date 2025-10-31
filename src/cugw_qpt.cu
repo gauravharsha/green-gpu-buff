@@ -548,13 +548,13 @@ namespace green::gpu {
           for (int it_batch = 0; it_batch < nt_mult; ++it_batch) {
             int t_curr = t + it_batch;
             int kst    = k * ns_ * nt_ + s * nt_ + t_curr;
-            V_pmQ_ptrs[k * nt_batch_ + it_batch]   = V_pmQ_ + k * nauxnao2_ * sizeof(cuda_complex);
-            V_Qpm_ptrs[k * nt_batch_ + it_batch]   = V_Qpm_ + k * nauxnao2_ * sizeof(cuda_complex);
-            g_stij_ptrs[k * nt_batch_ + it_batch]  = g_stij_ + kst * nao2_ * sizeof(cuda_complex);
-            g_smtij_ptrs[k * nt_batch_ + it_batch] = g_smtij_ + kst * nao2_ * sizeof(cuda_complex);
-            X1_ptrs[k * nt_batch_ + it_batch]      = X1t_tmQ_ + (k * nt_batch_ + it_batch) * nauxnao2_ * sizeof(cuda_complex);
-            X2_ptrs[k * nt_batch_ + it_batch]      = X2t_Ptm_ + (k * nt_batch_ + it_batch) * nauxnao2_ * sizeof(cuda_complex);
-            Pqk0_tQP_ptrs[k * nt_batch_ + it_batch] = Pqk0_tQP_local_ + (k * nt_batch_ + it_batch) * naux2_ * sizeof(cuda_complex);
+            V_pmQ_ptrs[k * nt_batch_ + it_batch]   = V_pmQ_ + k * nauxnao2_;
+            V_Qpm_ptrs[k * nt_batch_ + it_batch]   = V_Qpm_ + k * nauxnao2_;
+            g_stij_ptrs[k * nt_batch_ + it_batch]  = g_stij_ + kst * nao2_;
+            g_smtij_ptrs[k * nt_batch_ + it_batch] = g_smtij_ + kst * nao2_;
+            X1_ptrs[k * nt_batch_ + it_batch]      = X1t_tmQ_ + (k * nt_batch_ + it_batch) * nauxnao2_;
+            X2_ptrs[k * nt_batch_ + it_batch]      = X2t_Ptm_ + (k * nt_batch_ + it_batch) * nauxnao2_;
+            Pqk0_tQP_ptrs[k * nt_batch_ + it_batch] = Pqk0_tQP_local_ + (k * nt_batch_ + it_batch) * naux2_;
           }
         }
         // copy these to device -- should be fast so we can keep it blocking
