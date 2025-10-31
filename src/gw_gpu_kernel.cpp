@@ -309,7 +309,7 @@ namespace green::gpu {
 
     void gw_gpu_kernel::GW_check_devices_free_space() {
       // Set _nk_batch
-      _nk_batch = std::min(_nk, (size_t)32);
+      _nk_batch = std::min(_nk, (size_t)8);
       // check devices' free space and space requirements
       auto prec = std::cout.precision();
       auto flags = std::cout.flags();
