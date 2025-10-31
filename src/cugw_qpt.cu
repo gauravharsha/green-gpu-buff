@@ -538,6 +538,7 @@ namespace green::gpu {
     cudaMalloc((void**)&d_g_smtij_ptrs_, nk_mult * nt_batch_ * sizeof(cuda_complex*));
     cudaMalloc((void**)&d_X1_ptrs_, nk_mult * nt_batch_ * sizeof(cuda_complex*));
     cudaMalloc((void**)&d_X2_ptrs_, nk_mult * nt_batch_ * sizeof(cuda_complex*));
+    cudaMalloc((void**)&d_Pqk0_tQP_ptrs_, nk_mult * nt_batch_ * sizeof(cuda_complex*));
     // set the stream for cublas
     cublasSetStream(*handle_, stream_);
     for (int s = 0; s < ns_; ++s) {
@@ -558,8 +559,9 @@ namespace green::gpu {
           }
         }
         // copy these to device -- should be fast so we can keep it blocking
-        cudaMemcpy(d_V_pmQ_ptrs_, V_pmQ_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_V_Qpm_ptrs_, V_Qpm_ptrs, nk_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        // we need batchCount = nk_mult * nt_mult pointers for each array in this t-slab
+        cudaMemcpy(d_V_pmQ_ptrs_, V_pmQ_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_V_Qpm_ptrs_, V_Qpm_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
         cudaMemcpy(d_g_stij_ptrs_, g_stij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
         cudaMemcpy(d_g_smtij_ptrs_, g_smtij_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
         cudaMemcpy(d_X1_ptrs_, X1_ptrs, nk_mult * nt_batch_ * sizeof(cuda_complex*), cudaMemcpyHostToDevice);
@@ -618,7 +620,15 @@ namespace green::gpu {
     //     write_P0(t, Pqk0_tQP, Pqk0_tQP_lock);
     //   }
     // }
-    cudaEventRecord(all_done_event_);
+  cudaEventRecord(all_done_event_);
+  // free device arrays of pointers (allocated per call)
+  cudaFree(d_V_pmQ_ptrs_);
+  cudaFree(d_V_Qpm_ptrs_);
+  cudaFree(d_g_stij_ptrs_);
+  cudaFree(d_g_smtij_ptrs_);
+  cudaFree(d_X1_ptrs_);
+  cudaFree(d_X2_ptrs_);
+  cudaFree(d_Pqk0_tQP_ptrs_);
   }
 
   // template <typename prec>
