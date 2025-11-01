@@ -291,7 +291,7 @@ namespace green::gpu {
       }
 
       if (!_devices_rank) POP_RANGE;
-      // break;
+      break;
       // if (!_devices_rank) PUSH_RANGE("Build P", 1);
 
       // qpt.wait_for_kpts();
