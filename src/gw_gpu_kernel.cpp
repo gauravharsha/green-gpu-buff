@@ -190,7 +190,7 @@ namespace green::gpu {
                                          bool need_minus_k, bool need_minus_k1) {
         // need_minux_k and need_minus_k1 are not needed for scalar, except for consistency in function signature
         statistics.start("read");
-        tensor<std::complex<prec>, 3> V_Qpm_for_each_k;
+        tensor<std::complex<prec>, 3> V_Qpm_for_each_k(_NQ, _nao, _nao);
         size_t q = _bz_utils.symmetry().reduced_to_full()[q_reduced_id];
         for (size_t k = k_start; k < k_end; k++) {
           // Create k-vector
