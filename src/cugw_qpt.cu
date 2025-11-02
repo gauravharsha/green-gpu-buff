@@ -382,6 +382,23 @@ namespace green::gpu {
     if (cudaMalloc(&Pqk0_tQP_local_, nk_batch_ * nt_batch_ * naux2_ * sizeof(cuda_complex)) != cudaSuccess)
       throw std::runtime_error("failure allocating Pq0");
 
+    // Allocate memory for GEMM pointer arrays for P0 contraction
+    int total_batch_size = nk_batch_ * nt_batch_;
+    if (cudaMalloc(&d_V_pmQ_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_V_pmQ_ptrs_");
+    if (cudaMalloc(&d_V_Qpm_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_V_Qpm_ptrs_");
+    if (cudaMalloc(&d_g_smtij_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_g_smtij_ptrs_");
+    if (cudaMalloc(&d_g_stij_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_g_stij_ptrs_");
+    if (cudaMalloc(&d_X1t_tmQ_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_X1t_tmQ_ptrs_");
+    if (cudaMalloc(&d_X2t_Ptm_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_X2t_Ptm_ptrs_");
+    if (cudaMalloc(&d_Pqk0_tQP_local_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
+      throw std::runtime_error("failure allocating d_Pqk0_tQP_local_ptrs_");
+
     cudaEventCreateWithFlags(&data_ready_event_, cudaEventDisableTiming);
     cudaEventCreateWithFlags(&all_done_event_, cudaEventDisableTiming);
 
@@ -404,6 +421,15 @@ namespace green::gpu {
     cudaFree(g_stij_);
     cudaFree(g_smtij_);
     cudaFree(sigmak_stij_);
+
+    // Free pointer arrays
+    cudaFree(d_V_pmQ_ptrs_);
+    cudaFree(d_V_Qpm_ptrs_);
+    cudaFree(d_g_smtij_ptrs_);
+    cudaFree(d_g_stij_ptrs_);
+    cudaFree(d_X1t_tmQ_ptrs_);
+    cudaFree(d_X2t_Ptm_ptrs_);
+    cudaFree(d_Pqk0_tQP_local_ptrs_);
 
     cudaFreeHost(V_Qpm_buffer_);
     if (_low_memory_requirement) {
@@ -523,23 +549,11 @@ namespace green::gpu {
     cuda_complex one       = cu_type_map<cxx_complex>::cast(1., 0.);
     cuda_complex zero      = cu_type_map<cxx_complex>::cast(0., 0.);
     cuda_complex prefactor = (ns_ == 1) ? cu_type_map<cxx_complex>::cast(-2., 0.) : cu_type_map<cxx_complex>::cast(-1., 0.);
-    // set up device pointers for batched gemm
-    cuda_complex **d_V_pmQ_ptrs_, **d_V_Qpm_ptrs_, **d_g_stij_ptrs_, **d_g_smtij_ptrs_, **d_X1_ptrs_, **d_X2_ptrs_;
-    cuda_complex **d_Pqk0_tQP_ptrs_;
     // set up host pointers for batched gemm
     cuda_complex *V_pmQ_ptrs[ns_ * nk_mult * nt_], *V_Qpm_ptrs[ns_ * nk_mult * nt_];
     cuda_complex *g_stij_ptrs[ns_ * nk_mult * nt_], *g_smtij_ptrs[ns_ * nk_mult * nt_batch_];
     cuda_complex *X1_ptrs[ns_ * nk_mult * nt_batch_], *X2_ptrs[ns_ * nk_mult * nt_batch_];
     cuda_complex *Pqk0_tQP_ptrs[ns_ * nk_mult * nt_batch_];
-    // allocate memory on device for pointer arrays
-    cudaMalloc((void**)&d_V_pmQ_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_V_Qpm_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_g_stij_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_g_smtij_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_X1_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_X2_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    cudaMalloc((void**)&d_Pqk0_tQP_ptrs_, ns_ * nk_mult * nt_ * sizeof(cuda_complex*));
-    std::cout << "Allocated device memory for pointer arrays for batched GEMM" << std::endl;
     // set the stream for cublas
     cublasSetStream(*handle_, stream_);
     // Prepare pointer arrays and perform batched gemm in slabs of nk_mult * nt_batch_
@@ -576,33 +590,32 @@ namespace green::gpu {
                         nk_mult * nt_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
         cudaMemcpyAsync(d_g_smtij_ptrs_ + batch_start, g_smtij_ptrs + batch_start,
                         nk_mult * nt_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpyAsync(d_X1_ptrs_ + batch_start, X1_ptrs + batch_start,
+        cudaMemcpyAsync(d_X1t_tmQ_ptrs_ + batch_start, X1_ptrs + batch_start,
                         nk_mult * nt_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpyAsync(d_X2_ptrs_ + batch_start, X2_ptrs + batch_start,
+        cudaMemcpyAsync(d_X2t_Ptm_ptrs_ + batch_start, X2_ptrs + batch_start,
                         nk_mult * nt_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        cudaMemcpyAsync(d_Pqk0_tQP_ptrs_ + batch_start, Pqk0_tQP_ptrs + batch_start,
+        cudaMemcpyAsync(d_Pqk0_tQP_local_ptrs_ + batch_start, Pqk0_tQP_ptrs + batch_start,
                         nk_mult * nt_mult * sizeof(cuda_complex*), cudaMemcpyHostToDevice, stream_);
-        std::cout << "Copied pointer arrays to device for batched GEMM at t=" << t << std::endl;
         // START BATCHED GEMMS
         // Step 1: X1_t_mQ = G_t_p * V_pmQ; G_tp = G^{k}(-t)_tp
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_N, CUBLAS_OP_N, nao_ * naux_, nao_, nao_, &one,
                          (const cuda_complex**)d_V_pmQ_ptrs_ + batch_start, nauxnao_,
                          (const cuda_complex**)d_g_smtij_ptrs_ + batch_start, nao_, &zero,
-                         d_X1_ptrs_ + batch_start, nauxnao_, nk_mult * nt_mult) != CUBLAS_STATUS_SUCCESS) {
+                         d_X1t_tmQ_ptrs_ + batch_start, nauxnao_, nk_mult * nt_mult) != CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
         // Step 2: X2_Pt_m = (V_Pt_n)* * G_m_n; G_mn = G^{k1}(t)_{mn}
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_N, nao_, nauxnao_, nao_, &one,
                          (const cuda_complex**)d_g_stij_ptrs_ + batch_start, nao_,
                          (const cuda_complex**)d_V_Qpm_ptrs_ + batch_start, nao_, &zero,
-                         d_X2_ptrs_ + batch_start, nao_, nk_mult * nt_mult) !=
+                         d_X2t_Ptm_ptrs_ + batch_start, nao_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
         // Step 3: Pq0_QP=X2_Ptm Q1_tmQ
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
-                         (const cuda_complex**)d_X2_ptrs_ + batch_start, nao2_,
-                         (const cuda_complex**)d_X1_ptrs_ + batch_start, naux_, &zero,
+                         (const cuda_complex**)d_X2t_Ptm_ptrs_ + batch_start, nao2_,
+                         (const cuda_complex**)d_X1t_tmQ_ptrs_ + batch_start, naux_, &zero,
                          d_Pqk0_tQP_ptrs_ + batch_start, naux_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
@@ -612,14 +625,6 @@ namespace green::gpu {
       }
     }
     cudaEventRecord(all_done_event_);
-    // free device arrays of pointers (allocated per call)
-    cudaFree(d_V_pmQ_ptrs_);
-    cudaFree(d_V_Qpm_ptrs_);
-    cudaFree(d_g_stij_ptrs_);
-    cudaFree(d_g_smtij_ptrs_);
-    cudaFree(d_X1_ptrs_);
-    cudaFree(d_X2_ptrs_);
-    cudaFree(d_Pqk0_tQP_ptrs_);
   }
 
 

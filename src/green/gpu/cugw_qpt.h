@@ -454,6 +454,9 @@ namespace green::gpu {
     // false: not required, stream ready for next calculation
     // true: required, stream occupied
     bool cleanup_req_ = false;
+
+    // set up device pointers for batched gemm
+    cuda_complex **d_V_pmQ_ptrs_, **d_V_Qpm_ptrs_, **d_g_stij_ptrs_, **d_g_smtij_ptrs_, **d_X1t_tmQ_ptrs_, **d_X2t_Ptm_ptrs_, **d_Pqk0_tQP_local_ptrs_;
   };
 
   template <typename prec>
