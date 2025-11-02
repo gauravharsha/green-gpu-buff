@@ -527,7 +527,7 @@ namespace green::gpu {
     cuda_complex **d_V_pmQ_ptrs_, **d_V_Qpm_ptrs_, **d_g_stij_ptrs_, **d_g_smtij_ptrs_, **d_X1_ptrs_, **d_X2_ptrs_;
     cuda_complex **d_Pqk0_tQP_ptrs_;
     // set up host pointers for batched gemm
-    cuda_complex *V_pmQ_ptrs[nk_mult], *V_Qpm_ptrs[nk_mult];
+    cuda_complex *V_pmQ_ptrs[nk_mult * nt_batch_], *V_Qpm_ptrs[nk_mult * nt_batch_];
     cuda_complex *g_stij_ptrs[nk_mult * nt_batch_], *g_smtij_ptrs[nk_mult * nt_batch_];
     cuda_complex *X1_ptrs[nk_mult * nt_batch_], *X2_ptrs[nk_mult * nt_batch_];
     cuda_complex *Pqk0_tQP_ptrs[nk_mult * nt_batch_];
