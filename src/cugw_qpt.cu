@@ -616,7 +616,7 @@ namespace green::gpu {
         if (GEMM_BATCHED(*handle_, CUBLAS_OP_T, CUBLAS_OP_T, naux_, naux_, nao2_, &prefactor,
                          (const cuda_complex**)d_X2t_Ptm_ptrs_ + batch_start, nao2_,
                          (const cuda_complex**)d_X1t_tmQ_ptrs_ + batch_start, naux_, &zero,
-                         d_Pqk0_tQP_ptrs_ + batch_start, naux_, nk_mult * nt_mult) !=
+                         d_Pqk0_tQP_local_ptrs_ + batch_start, naux_, nk_mult * nt_mult) !=
             CUBLAS_STATUS_SUCCESS) {
           throw std::runtime_error("GEMM_BATCHED fails on gw_qkpt.compute_first_tau_contraction().");
         }
