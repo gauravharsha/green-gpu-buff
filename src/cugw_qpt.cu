@@ -383,7 +383,7 @@ namespace green::gpu {
       throw std::runtime_error("failure allocating Pq0");
 
     // Allocate memory for GEMM pointer arrays for P0 contraction
-    int total_batch_size = nk_batch_ * nt_batch_;
+    int total_batch_size = nk_batch_ * nt_ * ns_;
     if (cudaMalloc(&d_V_pmQ_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
       throw std::runtime_error("failure allocating d_V_pmQ_ptrs_");
     if (cudaMalloc(&d_V_Qpm_ptrs_, total_batch_size * sizeof(cuda_complex*)) != cudaSuccess)
